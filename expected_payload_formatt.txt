@@ -1,0 +1,5 @@
+{ "event": "payment_success",
+"transaction_id": "abc123",
+"amount": 49.90,
+"currency": "BRL",
+"timestamp": "2025-05-11T16:00:00Z" }

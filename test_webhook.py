@@ -43,7 +43,7 @@ async def load_args():
     timestamp = sys.argv[5] if len(sys.argv) > 5 else "2023-10-01T12:00:00Z"
     token = sys.argv[6] if len(sys.argv) > 6 else "meu-token-secreto"
 
-    url = "http://localhost:5000/webhook"  # URL do webhook a ser testado
+    url = "http://localhost:5001/webhook"  # URL do webhook a ser testado
 
     headers = {
         "Content-Type": "application/json",
