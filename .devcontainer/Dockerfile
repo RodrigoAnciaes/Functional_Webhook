@@ -1,23 +1,21 @@
 # Base image with VS Code setup
 FROM mcr.microsoft.com/vscode/devcontainers/base:ubuntu-22.04
 
-# Install dependencies for OCaml and Haskell
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    opam \
-    m4 \
-    pkg-config \
-    git \
     curl \
+    git \
     build-essential \
     libssl-dev \
     zlib1g-dev \
     libtinfo-dev \
     libsystemd-dev \
-    libgmp-dev && \
-    opam init -y && \
-    eval $(opam env) && \
-    opam switch create 4.14.0 && \
-    opam install -y dune utop ocaml-lsp-server
+    libgmp-dev \
+    libnuma-dev \
+    python3 \
+    python3-pip \
+    python3-venv \
+    && rm -rf /var/lib/apt/lists/*
 
 USER vscode
 
@@ -28,11 +26,23 @@ RUN bash -c "curl --proto '=https' --tlsv1.2 -sSf https://get-ghcup.haskell.org 
 # Add ghcup to PATH
 ENV PATH=${PATH}:/home/vscode/.local/bin
 ENV PATH=${PATH}:/home/vscode/.ghcup/bin
+ENV PATH=${PATH}:/home/vscode/.cabal/bin
 
-# Install cabal and GHC
-RUN bash -c "ghcup upgrade" && \
-    bash -c "ghcup install cabal" && \
-    bash -c "ghcup install ghc"
+# Install Haskell tools
+RUN bash -c "source ~/.ghcup/env && ghcup upgrade" && \
+    bash -c "source ~/.ghcup/env && ghcup install cabal latest" && \
+    bash -c "source ~/.ghcup/env && ghcup install ghc latest" && \
+    bash -c "source ~/.ghcup/env && ghcup install stack latest" && \
+    bash -c "source ~/.ghcup/env && ghcup set ghc latest" && \
+    bash -c "source ~/.ghcup/env && ghcup set cabal latest" && \
+    bash -c "source ~/.ghcup/env && ghcup set stack latest"
+
+# Install Python packages for the webhook testing
+RUN python3 -m pip install --user --upgrade pip && \
+    python3 -m pip install --user fastapi uvicorn requests asyncio
 
 # Set working directory
 WORKDIR /workspaces/Functional_Webhook
+
+# Ensure Haskell environment is loaded
+RUN echo 'source ~/.ghcup/env' >> ~/.bashrc

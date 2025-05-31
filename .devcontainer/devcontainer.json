@@ -1,18 +1,27 @@
 {
-  "name": "OCaml and Haskell DevContainer",
+  "name": "Haskell and Python DevContainer",
   "build": {
     "dockerfile": "Dockerfile"
   },
   "settings": {
     "editor.formatOnSave": true,
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
+    "python.defaultInterpreterPath": "/usr/bin/python3",
+    "python.formatting.provider": "black",
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": true
   },
   "extensions": [
-    "ocamllabs.ocaml-platform",
     "justusadam.language-haskell",
-    "gitlens.gitlens"
+    "haskell.haskell",
+    "ms-python.python",
+    "ms-python.pylint",
+    "gitlens.gitlens",
+    "ms-vscode.vscode-json"
   ],
-  "forwardPorts": [],
-  "postCreateCommand": "bash -c 'export PATH=\"$HOME/.ghcup/bin:$HOME/.cabal/bin:$HOME/.local/bin:$PATH\" && cabal update && cabal build || echo \"Initial build failed. Run cabal build manually.\"'",
+  "forwardPorts": [
+    5000,
+    5001
+  ],
+  "postCreateCommand": "bash -c 'source ~/.ghcup/env && echo \"Setting up environment...\" && cabal update && python3 -m pip install --user fastapi uvicorn requests black pylint && if [ -f \"stack.yaml\" ]; then stack setup && stack build; elif [ -f \"Functional-Webhook.cabal\" ]; then cabal build; fi && chmod +x run_webhook.sh 2>/dev/null || true && echo \"Setup complete!\"'",
   "remoteUser": "vscode"
 }
