@@ -32,7 +32,7 @@ async def cancelar(req: Request):
 
 # Função para rodar o servidor FastAPI numa thread separada
 def run_server():
-    uvicorn.run(app, host="127.0.0.1", port=5001, log_level="error")
+    uvicorn.run(app, host="127.0.0.1", port=5000, log_level="error")
 
 # Carrega argumentos de linha de comando ou usa valores padrão
 async def load_args():
