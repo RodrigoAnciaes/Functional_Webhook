@@ -72,6 +72,7 @@ async def test_webhook(url, headers, data):
         print("1. Webhook test ok: successful!")
     else:
         print("1. Webhook test failed: successful!")
+        print("   Response:", response.status_code, response.text)
 
     # Teste 2: transação duplicada (deve falhar se o webhook previne duplicações)
     response = requests.post(url, headers=headers, data=json.dumps(data))
@@ -80,6 +81,7 @@ async def test_webhook(url, headers, data):
         print("2. Webhook test ok: transação duplicada!")
     else:
         print("2. Webhook test failed: transação duplicada!")
+        print("   Response:", response.status_code, response.text)
 
     # Teste 3: amount incorreto e transaction_id alterado
     data["transaction_id"] += "a"  # Altera ID para evitar conflito
@@ -91,6 +93,7 @@ async def test_webhook(url, headers, data):
         print("3. Webhook test ok: amount incorreto!")
     else:
         print("3. Webhook test failed: amount incorreto!")
+        print("   Response:", response.status_code, response.text)
 
     # Teste 4: token inválido
     token = headers["X-Webhook-Token"]
@@ -102,6 +105,7 @@ async def test_webhook(url, headers, data):
         print("4. Webhook test ok: Token Invalido!")
     else:
         print("4. Webhook test failed: Token Invalido!")
+        print("   Response:", response.status_code, response.text)
 
     # Teste 5: payload vazio
     response = requests.post(url, headers=headers, data=json.dumps({}))
@@ -110,6 +114,7 @@ async def test_webhook(url, headers, data):
         print("5. Webhook test ok: Payload Invalido!")
     else:
         print("5. Webhook test failed: Payload Invalido!")
+        print("   Response:", response.status_code, response.text)
 
     # Teste 6: campos ausentes (sem timestamp)
     del data["timestamp"]
@@ -122,6 +127,7 @@ async def test_webhook(url, headers, data):
         print("6. Webhook test ok: Campos ausentes!")
     else:
         print("6. Webhook test failed: Campos ausentes!")
+        print("   Response:", response.status_code, response.text)
 
     return i
 

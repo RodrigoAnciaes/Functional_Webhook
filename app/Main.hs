@@ -15,18 +15,36 @@ import Control.Concurrent.STM
 import qualified Data.Set as Set
 import Data.Maybe (isJust)
 import Control.Exception (try, SomeException)
+import Text.Read (readMaybe)
 
 -- Data types for the webhook payload
 data WebhookPayload = WebhookPayload
   { event          :: T.Text
   , transaction_id :: T.Text
-  , amount         :: Double
+  , amount         :: AmountValue  -- Changed to handle both string and number
   , currency       :: T.Text
   , timestamp      :: Maybe T.Text  -- Optional to handle missing field test
   } deriving (Show, Generic)
 
+-- Custom type to handle amount as either string or number
+data AmountValue = AmountValue Double deriving (Show)
+
+instance FromJSON AmountValue where
+  parseJSON (Number n) = return $ AmountValue (realToFrac n)
+  parseJSON (String s) = case readMaybe (T.unpack s) of
+    Just d  -> return $ AmountValue d
+    Nothing -> fail "Invalid amount format"
+  parseJSON _ = fail "Amount must be a number or string"
+
 instance FromJSON WebhookPayload
-instance ToJSON WebhookPayload
+instance ToJSON WebhookPayload where
+  toJSON (WebhookPayload e tid (AmountValue amt) curr ts) =
+    object [ "event" .= e
+           , "transaction_id" .= tid
+           , "amount" .= amt
+           , "currency" .= curr
+           , "timestamp" .= ts
+           ]
 
 -- Data type for callback payloads (field renamed to avoid clash)
 data CallbackPayload = CallbackPayload
@@ -42,12 +60,12 @@ instance ToJSON CallbackPayload where
 expectedToken :: T.Text
 expectedToken = "meu-token-secreto"
 
--- Callback URLs
+-- Callback URLs - FIXED: Changed port from 5001 to 5000
 confirmUrl :: String
-confirmUrl = "http://127.0.0.1:5001/confirmar"
+confirmUrl = "http://127.0.0.1:5000/confirmar"
 
 cancelUrl :: String
-cancelUrl = "http://127.0.0.1:5001/cancelar"
+cancelUrl = "http://127.0.0.1:5000/cancelar"
 
 -- Main application
 main :: IO ()
@@ -79,30 +97,30 @@ main = do
                 status badRequest400
                 json $ object ["error" .= ("Invalid payload" :: T.Text)]
               Just payload -> do
-                -- Check for duplicate transaction
-                isDuplicate <- liftIO $ atomically $ do
-                  processed <- readTVar processedTransactions
-                  if Set.member (transaction_id payload) processed
-                    then return True
-                    else do
-                      writeTVar processedTransactions (Set.insert (transaction_id payload) processed)
-                      return False
+                -- First validate payload
+                let validationResult = validatePayload payload
 
-                if isDuplicate
-                then do
-                  status badRequest400
-                  json $ object ["error" .= ("Duplicate transaction" :: T.Text)]
-                else do
-                  -- Validate payload
-                  let validationResult = validatePayload payload
+                case validationResult of
+                  Left err -> do
+                    -- Send cancellation callback for validation errors
+                    _ <- liftIO $ sendCallback cancelUrl (transaction_id payload)
+                    status badRequest400
+                    json $ object ["error" .= err]
+                  Right _ -> do
+                    -- Only check for duplicates AFTER validation passes
+                    isDuplicate <- liftIO $ atomically $ do
+                      processed <- readTVar processedTransactions
+                      if Set.member (transaction_id payload) processed
+                        then return True
+                        else do
+                          writeTVar processedTransactions (Set.insert (transaction_id payload) processed)
+                          return False
 
-                  case validationResult of
-                    Left err -> do
-                      -- Send cancellation callback
-                      _ <- liftIO $ sendCallback cancelUrl (transaction_id payload)
+                    if isDuplicate
+                    then do
                       status badRequest400
-                      json $ object ["error" .= err]
-                    Right _ -> do
+                      json $ object ["error" .= ("Duplicate transaction" :: T.Text)]
+                    else do
                       -- Send confirmation callback
                       success <- liftIO $ sendCallback confirmUrl (transaction_id payload)
                       if success
@@ -120,7 +138,8 @@ validatePayload payload =
     Nothing -> Left "Missing timestamp"
     Just _ -> Right ()
     >>= \_ ->
-      if amount payload <= 0
+      let (AmountValue amt) = amount payload
+      in if amt <= 0
         then Left "Invalid amount"
         else Right ()
     >>= \_ ->
@@ -146,5 +165,10 @@ sendCallback url transId = do
   result <- try (httpLBS request') :: IO (Either SomeException (Response BL.ByteString))
 
   case result of
-    Left _        -> return False
-    Right response -> return $ getResponseStatusCode response == 200
+    Left err -> do
+      putStrLn $ "Callback failed to " ++ url ++ ": " ++ show err
+      return False
+    Right response -> do
+      let statusCode = getResponseStatusCode response
+      putStrLn $ "Callback sent to " ++ url ++ " with status: " ++ show statusCode
+      return $ statusCode == 200

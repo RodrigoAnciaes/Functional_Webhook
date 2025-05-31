@@ -12,8 +12,7 @@ A Haskell-based webhook server that processes payment events and validates trans
 
 ## Requirements
 
-- GHC (Glasgow Haskell Compiler)
-- Cabal build tool
+- Stack (Haskell Tool Stack)
 - Python 3.x (for running tests)
 
 ## Setup
@@ -26,11 +25,11 @@ A Haskell-based webhook server that processes payment events and validates trans
 
 ### Manual Setup
 
-1. Install GHCup: https://www.haskell.org/ghcup/
-2. Install dependencies:
+1. Install Stack: https://docs.haskellstack.org/en/stable/install_and_upgrade/
+2. Install dependencies and build:
    ```bash
-   cabal update
-   cabal build
+   stack setup
+   stack build
    ```
 
 ## Running the Webhook Server
@@ -43,9 +42,9 @@ chmod +x run_webhook.sh
 ./run_webhook.sh
 ```
 
-Or directly with cabal:
+Or directly with stack:
 ```bash
-cabal run Functional-Webhook
+stack run
 ```
 
 The server will start on port 5001.
@@ -111,3 +110,25 @@ To modify the webhook logic, edit `app/Main.hs`. The main components are:
 3. **Duplicate detection**: Uses STM TVar with a Set to track processed transactions
 4. **Validation**: Checks required fields and business rules
 5. **Callbacks**: Sends confirmation or cancellation requests based on validation
+
+### Building and Development Commands
+
+```bash
+# Setup project (first time)
+stack setup
+
+# Build the project
+stack build
+
+# Run the application
+stack run
+
+# Install dependencies
+stack install
+
+# Clean build artifacts
+stack clean
+
+# Run with development flags
+stack build --fast --file-watch
+```
