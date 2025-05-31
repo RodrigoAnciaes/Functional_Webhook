@@ -100,6 +100,7 @@ async def test_webhook(url, headers, data):
     headers["X-Webhook-Token"] = "invalid-token"
     data["transaction_id"] += "b"
     response = requests.post(url, headers=headers, data=json.dumps(data))
+    await asyncio.sleep(1)  # Aguarda o webhook processar
     if response.status_code != 200:
         i += 1
         print("4. Webhook test ok: Token Invalido!")
@@ -109,6 +110,7 @@ async def test_webhook(url, headers, data):
 
     # Teste 5: payload vazio
     response = requests.post(url, headers=headers, data=json.dumps({}))
+    await asyncio.sleep(1)  # Aguarda o webhook processar
     if response.status_code != 200:
         i += 1
         print("5. Webhook test ok: Payload Invalido!")
