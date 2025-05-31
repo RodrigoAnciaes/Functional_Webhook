@@ -13,6 +13,6 @@
     "gitlens.gitlens"
   ],
   "forwardPorts": [],
-  "postCreateCommand": "/home/vscode/postCreate.sh",
+  "postCreateCommand": "bash -c 'export PATH=\"$HOME/.ghcup/bin:$HOME/.cabal/bin:$HOME/.local/bin:$PATH\" && cabal update && cabal build || echo \"Initial build failed. Run cabal build manually.\"'",
   "remoteUser": "vscode"
 }

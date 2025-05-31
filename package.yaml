@@ -1,0 +1,30 @@
+name:                Functional-Webhook
+version:             0.1.0.0
+license:             MIT
+author:              "RodrigoAnciaes"
+maintainer:          "rodrigoanpatelli@gmail.com"
+
+dependencies:
+- base >= 4.14 && < 5
+- wai
+- warp
+- http-types
+- aeson
+- text
+- bytestring
+- stm
+- containers
+- http-conduit
+
+executables:
+  Functional-Webhook:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    default-extensions:
+    - OverloadedStrings
+    - DeriveGeneric
+    - DuplicateRecordFields
