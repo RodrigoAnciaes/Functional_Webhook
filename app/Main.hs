@@ -97,63 +97,74 @@ main = do
                 status badRequest400
                 json $ object ["error" .= ("Invalid payload" :: T.Text)]
               Just payload -> do
-                -- First validate payload
-                let validationResult = validatePayload payload
-
-                case validationResult of
-                  Left err -> do
-                    -- Send cancellation callback for validation errors
-                    _ <- liftIO $ sendCallback cancelUrl (transaction_id payload)
-                    status badRequest400
-                    json $ object ["error" .= err]
-                  Right _ -> do
-                    -- Only check for duplicates AFTER validation passes
-                    isDuplicate <- liftIO $ atomically $ do
-                      processed <- readTVar processedTransactions
-                      if Set.member (transaction_id payload) processed
-                        then return True
-                        else do
-                          writeTVar processedTransactions (Set.insert (transaction_id payload) processed)
-                          return False
-
-                    if isDuplicate
-                    then do
-                      status badRequest400
-                      json $ object ["error" .= ("Duplicate transaction" :: T.Text)]
+                -- Check for duplicates FIRST
+                isDuplicate <- liftIO $ atomically $ do
+                  processed <- readTVar processedTransactions
+                  if Set.member (transaction_id payload) processed
+                    then return True
                     else do
+                      writeTVar processedTransactions (Set.insert (transaction_id payload) processed)
+                      return False
+
+                if isDuplicate
+                then do
+                  status badRequest400
+                  json $ object ["error" .= ("Duplicate transaction" :: T.Text)]
+                else do
+                  -- Validate payload
+                  let validationResult = validatePayload payload
+
+                  case validationResult of
+                    Left err -> do
+                      -- Send cancellation callback for validation errors
+                      liftIO $ putStrLn $ "Validation failed: " ++ T.unpack err
+                      callbackSuccess <- liftIO $ sendCallback cancelUrl (transaction_id payload)
+                      liftIO $ putStrLn $ "Cancel callback success: " ++ show callbackSuccess
+                      status badRequest400
+                      json $ object ["error" .= err]
+                    Right _ -> do
                       -- Send confirmation callback
-                      success <- liftIO $ sendCallback confirmUrl (transaction_id payload)
-                      if success
+                      liftIO $ putStrLn $ "Validation passed, sending confirmation callback"
+                      callbackSuccess <- liftIO $ sendCallback confirmUrl (transaction_id payload)
+                      liftIO $ putStrLn $ "Confirm callback success: " ++ show callbackSuccess
+                      if callbackSuccess
                         then do
                           status ok200
                           json $ object ["status" .= ("success" :: T.Text)]
                         else do
+                          -- Remove from processed set if callback fails
+                          liftIO $ atomically $ do
+                            processed <- readTVar processedTransactions
+                            writeTVar processedTransactions (Set.delete (transaction_id payload) processed)
                           status internalServerError500
                           json $ object ["error" .= ("Failed to confirm transaction" :: T.Text)]
 
 -- Validate the webhook payload
 validatePayload :: WebhookPayload -> Either T.Text ()
 validatePayload payload =
+  -- Check for missing timestamp first
   case timestamp payload of
     Nothing -> Left "Missing timestamp"
-    Just _ -> Right ()
-    >>= \_ ->
-      let (AmountValue amt) = amount payload
-      in if amt <= 0
-        then Left "Invalid amount"
-        else Right ()
-    >>= \_ ->
+    Just _ -> 
+      -- Check for empty required fields
       if T.null (event payload)
          || T.null (transaction_id payload)
          || T.null (currency payload)
         then Left "Missing required fields"
-        else Right ()
+        else
+          -- Check amount validity
+          let (AmountValue amt) = amount payload
+          in if amt <= 0
+            then Left "Invalid amount"
+            else Right ()
 
 -- Send callback to confirmation or cancellation endpoint
 sendCallback :: String -> T.Text -> IO Bool
 sendCallback url transId = do
   let payload = CallbackPayload { cb_transaction_id = transId }
   let requestBody = encode payload
+
+  putStrLn $ "Sending callback to: " ++ url ++ " with transaction_id: " ++ T.unpack transId
 
   -- Create the request
   request <- parseRequest $ "POST " ++ url
