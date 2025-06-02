@@ -60,7 +60,7 @@ instance ToJSON CallbackPayload where
 expectedToken :: T.Text
 expectedToken = "meu-token-secreto"
 
--- Callback URLs - FIXED: Changed port from 5001 to 5000
+-- Callback URLs
 confirmUrl :: String
 confirmUrl = "http://127.0.0.1:5000/confirmar"
 
