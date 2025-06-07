@@ -2,6 +2,25 @@
 
 A Haskell-based webhook server that processes payment events and validates transactions.
 
+## Quick Start Commands
+
+```bash
+# 1. Clone and enter the project
+git clone <your-repo-url>
+cd Functional-Webhook
+
+# 2. Inside the container Build the project (Stack only - Cabal has dependency issues)
+stack setup
+stack build
+
+# 3. Run the webhook server (starts on port 5001)
+./run_webhook.sh
+# OR directly: stack run
+
+# 4. Test the webhook (in another terminal, will use port 5000)
+python3 test_webhook.py
+```
+
 ## Features
 
 - Token-based authentication
@@ -25,8 +44,7 @@ A Haskell-based webhook server that processes payment events and validates trans
 
 ### Manual Setup
 
-1. Install Stack: https://docs.haskellstack.org/en/stable/install_and_upgrade/
-2. Install dependencies and build:
+1. Install dependencies and build:
    ```bash
    stack setup
    stack build
@@ -47,7 +65,7 @@ Or directly with stack:
 stack run
 ```
 
-The server will start on port 5001.
+The server will start on port 5001. In this part sometimes may occur permission issues, if so, the error message will provide a hint on how to resolve it.
 
 ## Testing
 
